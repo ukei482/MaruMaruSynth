@@ -1,4 +1,28 @@
 use nih_plug::prelude::*;
+
+mod plugin;
+mod params;
+mod wavetable;
+mod voice;
+
+pub use plugin::WavetablePlugin;
+
+// Export VST3 (keep only VST3 export to avoid Clap trait bounds issues)
+// If you need CLAP/standalone later, we can add the proper trait impl.
+nih_export_vst3!(WavetablePlugin);
+
+
+
+
+
+
+
+
+
+
+/* 
+
+use nih_plug::prelude::*;
 use std::sync::Arc;
 
 struct VST_test1 {
@@ -150,3 +174,5 @@ impl Vst3Plugin for VST_test1 {
 
 nih_export_clap!(VST_test1);
 nih_export_vst3!(VST_test1);
+
+*/

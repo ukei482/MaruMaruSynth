@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "VST_test1"
+name = "MaruMaruSynthesizer"
 version = "0.1.0"
 dependencies = [
  "nih_plug",
