@@ -1,42 +1,282 @@
-#[repr(C)]
-pub struct MidiEvent {
-    note_number: i32,
-    velocity: f32,
-    sample_position: i32,
+// lib.rs
+
+// Cargo.toml の [lib] セクションで crate-type = ["cdylib"] を指定すること
+// 例:
+// [lib]
+// crate-type = ["cdylib"]
+
+use lazy_static::lazy_static; 
+use std::sync::Mutex;        
+use std::fs::{File, OpenOptions}; 
+use std::io::Write;      
+use std::time::{SystemTime, UNIX_EPOCH}; 
+use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::boxed::Box;
+use std::f32::consts::PI;
+
+mod analyzer;
+use analyzer::spectral_analyzer;
+
+
+//==============================================================================
+//
+//  Logger Implementation
+//
+//==============================================================================
+
+struct AppLogger {
+    file: Option<File>,
 }
 
-#[unsafe(no_mangle)]
+lazy_static! {
+    // Mutexで保護されたグローバルなLoggerインスタンスを作成
+    static ref LOGGER: Mutex<AppLogger> = Mutex::new(AppLogger {
+        file: OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("C:\\my_programs\\MaruMaru\\log.txt")
+            .ok(),
+    });
+}
 
-pub extern "C" fn rust_process
-(
+// --- Rust内部から呼び出すための関数 ---
+fn log_message_internal(prefix: &str, message: &str) {
+    if let Ok(mut logger) = LOGGER.lock() {
+        if let Some(file) = &mut logger.file {
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis();
 
-
-    buffer_ptr: *mut f32,
-    num_samples: usize,
-    midi_events: *const MidiEvent,
-    num_midi_events: usize,
-    blend: f32,
-    lfo_rate: f32,
-    lfo_depth: f32,
-
-
-) 
-{
-    let buffer   = unsafe { std::slice::from_raw_parts_mut(buffer_ptr, num_samples) };
-    let events = unsafe { std::slice::from_raw_parts(midi_events, num_midi_events) };
-
-    // 仮: MIDIイベントをログ出力（開発中用）
-    for e in events {
-        println!(
-            "MIDI note={} vel={} pos={}",
-            e.note_number, e.velocity, e.sample_position
-        );
+            // [タイムスタンプ][プレフィックス] メッセージ という形式で書き込む
+            let _ = writeln!(file, "[{}][{}] {}", timestamp, prefix, message);
+        }
     }
+}
 
-    // 仮: 簡単なオーディオ出力（blendパラメータで左右を切替）
-    for i in 0..num_samples {
-        let natural    = 0.2 * (i as f32 * 0.01).sin();    // 仮自然音
-        let electronic = 0.2 * (i as f32 * 0.02).sin();    // 仮電子音
-        buffer[i]           = natural * (1.0 - blend) + electronic * blend;
+// デバッグ用の簡易ファイルロガー
+fn log_to_file(msg: &str) {
+    if let Ok(mut f) = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("C:\\temp\\vst_log.txt")
+    {
+        let _ = writeln!(f, "{}", msg);
+        let _ = f.flush(); // 即座に書き込む
+    }
+}
+
+
+//==============================================================================
+//
+//  FFI Data Structures
+//
+//==============================================================================
+
+/// Rust と C++ 間で共有するパラメータ構造体
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ParamBundle {
+    pub attack    : f32,
+    pub decay     : f32,
+    pub sustain   : f32,
+    pub release   : f32,
+    pub blend     : f32,
+    pub cutoff    : f32,
+    pub resonance : f32,
+}
+
+/// プラグイン内部コンテキスト（C++からは不透明ポインタで扱う）
+pub struct Context {
+    pub sample_rate : f32,
+    pub block_size  : i32,
+    pub channels    : i32,
+    pub params_ptr  : AtomicPtr<ParamBundle>,
+    pub phase       : f32,
+    pub phase_inc   : f32,
+    pub active      : bool,
+    pub amp         : f32,
+}
+
+impl Context {
+    /// 初期パラメータをヒープに確保してポインタを返す
+    fn default_params_ptr() -> *mut ParamBundle {
+        let b = Box::new(ParamBundle {
+            attack     : 0.01,
+            decay      : 0.1,
+            sustain    : 0.8,
+            release    : 0.5,
+            blend      : 0.5,
+            cutoff     : 20000.0,
+            resonance  : 1.0,
+        });
+        Box::into_raw(b)
+    }
+}
+
+
+//==============================================================================
+//
+//  FFI Exported Functions
+//
+//==============================================================================
+
+///-----------------------------------------------------------------------------
+/// mm_log_message
+/// - C++側からのログ出力を受け付ける
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub extern "C" fn mm_log_message(message: *const c_char) {
+    if message.is_null() { return; }
+    let c_str = unsafe { CStr::from_ptr(message) };
+    if let Ok(rust_str) = c_str.to_str() {
+        // C++からのログには "[JUCE]" というプレフィックスを付ける
+        log_message_internal("JUCE", rust_str);
+    }
+}
+
+///-----------------------------------------------------------------------------
+/// mm_create_context
+/// - プラグインの内部状態(Context)を初期化してポインタを返す
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub extern "C" fn mm_create_context(sample_rate: f32, block_size: i32, channels: i32) -> *mut Context {
+    let ctx = Box::new(Context {
+        sample_rate,
+        block_size,
+        channels,
+        params_ptr : AtomicPtr::new(Context::default_params_ptr()),
+        phase      : 0.0,
+        phase_inc  : 0.0,
+        active     : false, // 初期状態は無音
+        amp        : 0.0,
+    });
+    Box::into_raw(ctx)
+}
+
+///-----------------------------------------------------------------------------
+/// mm_analyze_file
+/// - 指定されたパスのWAVファイルを解析する
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mm_analyze_file(ctx_ptr: *mut Context, path: *const c_char) -> i32 {
+    if ctx_ptr.is_null() || path.is_null() { return -1; }
+    
+    let cstr = CStr::from_ptr(path);
+    let rust_path = match cstr.to_str() {
+        Ok(s) => s,
+        Err(_) => return -2, // パスが不正なUTF-8
+    };
+
+    log_message_internal("Rust", &format!("mm_analyze_file called with path: {}", rust_path));
+    
+    // --- 分離した解析関数を呼び出す ---
+    match spectral_analyzer::analyze_wav_file(rust_path) {
+        Ok(result) => {
+            // 解析成功
+            log_message_internal("Rust", &format!(
+                "Analysis successful. Sample Rate: {}, Duration: {}ms",
+                result.sample_rate, result.duration_ms
+            ));
+
+            // 将来的に、この `result` を Context 構造体に保存する
+            // let ctx = &mut *ctx_ptr;
+            // ctx.analysis_data = Some(result);
+
+            0 // 成功コード
+        }
+        Err(e) => {
+            // 解析失敗
+            log_message_internal("Rust", &format!("Analysis failed: {}", e));
+            -3 // 失敗コード
+        }
+    }
+}
+
+///-----------------------------------------------------------------------------
+/// mm_set_params
+/// - C++側から送られてきたパラメータで内部状態をアトミックに更新する
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub extern "C" fn mm_set_params(ctx_ptr: *mut Context, params: *const ParamBundle) {
+    if ctx_ptr.is_null() || params.is_null() { return; }
+    let ctx = unsafe { &*ctx_ptr };
+    let new_box = unsafe { Box::new(*params) };
+    let new_ptr = Box::into_raw(new_box);
+    // 新しいポインタをセットし、古いポインタを受け取る
+    let old_ptr = ctx.params_ptr.swap(new_ptr, Ordering::SeqCst);
+    // 古いポインタがnullでなければ、Boxに戻してメモリを解放する
+    if !old_ptr.is_null() { 
+        unsafe { Box::from_raw(old_ptr); } 
+    }
+}
+
+///-----------------------------------------------------------------------------
+/// mm_note_on
+/// - MIDIノートオンイベントを処理する
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub extern "C" fn mm_note_on(ctx_ptr: *mut Context, note: i32, velocity: i32) {
+    if ctx_ptr.is_null() { return; }
+    let ctx = unsafe { &mut *ctx_ptr };
+    println!("mm_note_on note={} vel={}", note, velocity);  // ←確認
+    let freq = 440.0 * 2.0f32.powf((note as f32 - 69.0) / 12.0);
+    ctx.phase_inc = (freq / ctx.sample_rate) * 2.0 * PI;
+    ctx.phase = 0.0;
+    ctx.active = true;
+    ctx.amp = velocity as f32 / 127.0;
+}
+
+///-----------------------------------------------------------------------------
+/// mm_note_off
+/// - MIDIノートオフイベントを処理する
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub extern "C" fn mm_note_off(ctx_ptr: *mut Context, _note: i32) {
+    if ctx_ptr.is_null() { return; }
+    let ctx = unsafe { &mut *ctx_ptr };
+    ctx.active = false;
+    ctx.amp = 0.0;
+}
+
+///-----------------------------------------------------------------------------
+/// mm_process
+/// - オーディオバッファを処理し、音声信号を生成する
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub extern "C" fn mm_process(ctx_ptr: *mut Context, out_buffer: *mut f32, num_samples: i32, num_channels: i32) {
+    if ctx_ptr.is_null() || out_buffer.is_null() { return; }
+    let ctx = unsafe { &mut *ctx_ptr };
+
+    log_to_file(&format!("process: active={} amp={}", ctx.active, ctx.amp));
+
+    // パラメータをアトミックに読み込む
+    let params_ptr = ctx.params_ptr.load(Ordering::SeqCst);
+    // `unsafe` ブロックは最小限に
+    let params_ref = if !params_ptr.is_null() {
+        unsafe { *params_ptr }
+    } else {
+        // フォールバック用のデフォルト値
+        ParamBundle {
+            attack: 0.01, decay: 0.1, sustain: 0.8, release: 0.5,
+            blend: 0.5, cutoff: 20000.0, resonance: 1.0,
+        }
+    };
+    
+    let samples = num_samples as usize;
+    let out_slice = unsafe { std::slice::from_raw_parts_mut(out_buffer, samples) };
+
+    // バッファをクリア
+    for sample in out_slice.iter_mut() { *sample = 0.0; }
+
+    if ctx.active {
+        let amp = ctx.amp * params_ref.blend; // ADSRも考慮に入れるとさらに良くなります
+        for i in 0..samples {
+            ctx.phase += ctx.phase_inc;
+            if ctx.phase > 2.0 * PI { ctx.phase -= 2.0 * PI; }
+            out_slice[i] = ctx.phase.sin() * amp;
+        }
     }
 }

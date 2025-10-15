@@ -3,9 +3,12 @@
 <JUCERPROJECT id="XZJEHR" name="MaruMaru" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginChannelConfigs="0,2"
               pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn"
-              pluginFormats="buildVST3" pluginAUMainType="'auou'">
+              pluginFormats="buildStandalone,buildVST3" pluginAUMainType="'auou'">
   <MAINGROUP id="BERbp4" name="MaruMaru">
     <GROUP id="{D153CA06-910A-EA23-6256-92F034910B6C}" name="Source">
+      <FILE id="F0bRaN" name="RustBridge.h" compile="0" resource="0" file="Source/RustBridge.h"/>
+      <FILE id="cLfLEJ" name="RustBridge.cpp" compile="1" resource="0" file="Source/RustBridge.cpp"/>
+      <FILE id="mix3EQ" name="JuceLogger.h" compile="0" resource="0" file="Source/JuceLogger.h"/>
       <FILE id="Enkeqt" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="mHOm46" name="PluginProcessor.h" compile="0" resource="0"

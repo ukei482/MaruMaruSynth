@@ -1,10 +1,15 @@
 [package]
 name    = "rust_marumaru"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+lazy_static = "1.4.0"
+hound = "3.5"         # WAVファイルの読み込みに (すでに追加済みのはず)
+rustfft = "6.1"       # FFT計算のコア
+ndarray = "0.16.1"      # 多次元配列の操作
+apodize = "1.0"       # 窓関数
 
 [lib]
-crate-type = ["cdylib"] 
-path       = "src/lib.rs" 
+crate-type  = ["cdylib","rlib"] 
+path        = "src/lib.rs" 

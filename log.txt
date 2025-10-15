@@ -1,0 +1,4 @@
+[1760437673037][Rust] mm_analyze_file called with path: C:/path/to/non_existent_file.wav
+[1760437673037][Rust] Analysis failed: Failed to open WAV file: 指定されたパスが見つかりません。 (os error 3)
+[1760438584927][Rust] mm_analyze_file called with path: C:/path/to/non_existent_file.wav
+[1760438584927][Rust] Analysis failed: Failed to open WAV file: 指定されたパスが見つかりません。 (os error 3)
