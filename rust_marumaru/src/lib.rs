@@ -17,8 +17,6 @@ use std::boxed::Box;
 use std::f32::consts::PI;
 
 mod analyzer;
-use analyzer::spectral_analyzer;
-
 
 //==============================================================================
 //
@@ -36,7 +34,7 @@ lazy_static! {
         file: OpenOptions::new()
             .create(true)
             .append(true)
-            .open("C:\\my_programs\\MaruMaru\\log.txt")
+            .open("C:/my_programs/MaruMaru/log/log.txt")
             .ok(),
     });
 }
@@ -157,41 +155,77 @@ pub extern "C" fn mm_create_context(sample_rate: f32, block_size: i32, channels:
 }
 
 ///-----------------------------------------------------------------------------
-/// mm_analyze_file
-/// - 指定されたパスのWAVファイルを解析する
+/// mm_analyze_buffer (新規追加)
+/// - C++(JUCE)またはテストコードから生の音声バッファを受け取り解析する
 ///-----------------------------------------------------------------------------
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn mm_analyze_file(ctx_ptr: *mut Context, path: *const c_char) -> i32 {
-    if ctx_ptr.is_null() || path.is_null() { return -1; }
-    
-    let cstr = CStr::from_ptr(path);
-    let rust_path = match cstr.to_str() {
-        Ok(s) => s,
-        Err(_) => return -2, // パスが不正なUTF-8
-    };
+// lib.rs 内の mm_analyze_buffer を修正
 
-    log_message_internal("Rust", &format!("mm_analyze_file called with path: {}", rust_path));
-    
-    // --- 分離した解析関数を呼び出す ---
-    match spectral_analyzer::analyze_wav_file(rust_path) {
-        Ok(result) => {
-            // 解析成功
-            log_message_internal("Rust", &format!(
-                "Analysis successful. Sample Rate: {}, Duration: {}ms",
-                result.sample_rate, result.duration_ms
-            ));
+#[no_mangle]
+pub unsafe extern "C" fn mm_analyze_buffer(
+    ctx_ptr     : *mut Context,
+    buffer      : *const f32,
+    num_samples : usize,
+    sample_rate : u32,
+) -> i32 {
+    if ctx_ptr.is_null() || buffer.is_null() { return -1; }
 
-            // 将来的に、この `result` を Context 構造体に保存する
+    let audio_slice = std::slice::from_raw_parts(buffer, num_samples);
+
+    log_message_internal("Rust", &format!(
+        "mm_analyze_buffer called. Samples: {}, Rate: {}",
+        num_samples, sample_rate
+    ));
+
+    // 解析領域を仮設定 (現在はファイルを3分割)
+    let attack_range = (0, num_samples / 3);
+    let core_range = (num_samples / 3, num_samples * 2 / 3);
+    let sustain_range = (num_samples * 2 / 3, num_samples);
+
+    // --- ここからが変更箇所 ---
+    // UIから渡されるべきパラメータを仮で設定
+    let mode = analyzer::AnalysisMode::Wavetable;
+    let profile = analyzer::AnalysisProfile::Natural;
+
+    match analyzer::analyze_audio(
+        audio_slice,
+        sample_rate,
+        attack_range,
+        core_range,
+        sustain_range,
+        mode,
+        profile,
+    ) {
+        Ok(analysis_data) => {
+            log_message_internal("Rust", "Buffer analysis successful.");
+
+            // 解析結果をログに出力してみる（デバッグ用）
+            log_message_internal("Rust", &format!("Analysis Result: {:?}", analysis_data));
+
+            // 将来的にこの analysis_data を Context に保存する
             // let ctx = &mut *ctx_ptr;
-            // ctx.analysis_data = Some(result);
+            // ctx.analysis_data = Some(analysis_data);
 
-            0 // 成功コード
+            0 // 成功
         }
         Err(e) => {
-            // 解析失敗
-            log_message_internal("Rust", &format!("Analysis failed: {}", e));
-            -3 // 失敗コード
+            log_message_internal("Rust", &format!("Buffer analysis failed: {}", e));
+            -2 // 失敗
         }
+    }
+}
+
+
+///-----------------------------------------------------------------------------
+/// mm_destroy_context
+/// - C++側から呼ばれ、Contextのメモリを解放する
+///-----------------------------------------------------------------------------
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mm_destroy_context(ctx_ptr: *mut Context) {
+    if !ctx_ptr.is_null() {
+        // Box::from_raw を使ってポインタをBoxに戻し、
+        // スコープを抜ける際に自動的にメモリを解放させる
+        let _ = Box::from_raw(ctx_ptr);
+        log_message_internal("Rust", &format!("Context at {:?} destroyed.", ctx_ptr));
     }
 }
 
@@ -209,7 +243,7 @@ pub extern "C" fn mm_set_params(ctx_ptr: *mut Context, params: *const ParamBundl
     let old_ptr = ctx.params_ptr.swap(new_ptr, Ordering::SeqCst);
     // 古いポインタがnullでなければ、Boxに戻してメモリを解放する
     if !old_ptr.is_null() { 
-        unsafe { Box::from_raw(old_ptr); } 
+        unsafe { let _ = Box::from_raw(old_ptr); } 
     }
 }
 
@@ -246,7 +280,7 @@ pub extern "C" fn mm_note_off(ctx_ptr: *mut Context, _note: i32) {
 /// - オーディオバッファを処理し、音声信号を生成する
 ///-----------------------------------------------------------------------------
 #[unsafe(no_mangle)]
-pub extern "C" fn mm_process(ctx_ptr: *mut Context, out_buffer: *mut f32, num_samples: i32, num_channels: i32) {
+pub extern "C" fn mm_process(ctx_ptr: *mut Context, out_buffer: *mut f32, num_samples: i32, _num_channels: i32) {
     if ctx_ptr.is_null() || out_buffer.is_null() { return; }
     let ctx = unsafe { &mut *ctx_ptr };
 

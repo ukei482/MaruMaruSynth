@@ -1,0 +1,14 @@
+C:\my_programs\MaruMaru\rust_marumaru\target\debug\deps\midly-648319ff7b2a7db9.d: C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\lib.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\error.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\arena.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\event.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\io.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\live.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\primitive.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\riff.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\smf.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\stream.rs
+
+C:\my_programs\MaruMaru\rust_marumaru\target\debug\deps\libmidly-648319ff7b2a7db9.rmeta: C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\lib.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\error.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\arena.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\event.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\io.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\live.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\primitive.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\riff.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\smf.rs C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\stream.rs
+
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\lib.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\error.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\arena.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\event.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\io.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\live.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\primitive.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\riff.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\smf.rs:
+C:\Users\山田雨馨\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\midly-0.5.3\src\stream.rs:
