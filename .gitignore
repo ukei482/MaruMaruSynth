@@ -1,1 +1,59 @@
-/target
+# Visual Studio
+.vs/
+*.vsidx
+*.VC.db
+*.VC.opendb
+*.suo
+*.user
+*.userosscache
+
+# JUCE
+Builds/
+JuceLibraryCode/
+
+# ビルド成果物
+Build/
+build/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.pdb
+
+# 中間ファイル
+*.obj
+*.o
+*.lo
+*.la
+*.idb
+*.mod
+*.exp
+
+# Mac特有
+*.DS_Store
+*.app
+*.xcworkspace/
+*.xcuserdata/
+DerivedData/
+
+# Visual Studio特有
+*.VC.db
+*.VC.opendb
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.opensdf
+*.ipch
+*.db
+
+# Projucerで生成されるユーザー依存の設定
+*.jucer.user
+
+# CMake (JUCE 6以降でよく使う)
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/

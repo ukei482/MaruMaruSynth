@@ -1,0 +1,18 @@
+[package]
+name    = "rust_marumaru"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lazy_static     = "1.4.0"       # グローバル変数の初期化に
+hound           = "3.5"         # WAVファイルの読み込みに
+midly           = "0.5"         # MIDIファイルの読み書き用
+rustfft         = "6.1"         # FFT計算のコア
+ndarray         = "0.15.6"      # 多次元配列の操作
+apodize         = "1.0"         # 窓関数
+pitch-detection = "0.3.0"       # f0推定
+splines         = "5.0.0"       # スプライン補間
+
+[lib]
+crate-type  = ["cdylib","rlib"] 
+path        = "src/lib.rs" 

@@ -1,0 +1,8 @@
+[1760437673037][Rust] mm_analyze_file called with path: C:/path/to/non_existent_file.wav
+[1760437673037][Rust] Analysis failed: Failed to open WAV file: 指定されたパスが見つかりません。 (os error 3)
+[1760438584927][Rust] mm_analyze_file called with path: C:/path/to/non_existent_file.wav
+[1760438584927][Rust] Analysis failed: Failed to open WAV file: 指定されたパスが見つかりません。 (os error 3)
+[1760534021769][Rust] Context at 0x141deb8ab60 destroyed.
+[1760534180035][Rust] Context at 0x16adf655c70 destroyed.
+[1760534200912][Rust] Context at 0x177b5ba9710 destroyed.
+[1760534210144][Rust] Context at 0x2a7349b6440 destroyed.
