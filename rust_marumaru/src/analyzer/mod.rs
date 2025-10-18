@@ -18,6 +18,8 @@ pub use self::types::{AnalysisResult};
 pub fn analyze_audio(
     audio_slice: &[f32],
     sample_rate: u32,
+    core_end_ratio: f32, 
+    release_start_ratio: f32, 
 ) -> Result<AnalysisResult, String> {
 
     // 1. 前処理
@@ -52,8 +54,67 @@ pub fn analyze_audio(
         }
     };
     
-    // 5. DynamicPitchSync (プレースホルダー)
+    // 5. DynamicPitchSync (ピッチ揺れ正規化)
     let final_tables = dynamic_pitch::apply_pitch_sync(&tables, &f0_curve)?;
+    
+    // ★ 5.5. 振幅プロファイルの抽出と分割ロジック
+    // 5.5.1. 振幅プロファイル（RMS）の抽出
+    let mut amp_curve = Vec::new();
+    let window_size = 512; 
+    for chunk in audio_slice.chunks(window_size) { 
+        let rms = chunk.iter().map(|&s| s * s).sum::<f32>() / chunk.len() as f32;
+        amp_curve.push(rms.sqrt());
+    }
+    
+    // 5.5.2. ゲインカーブをリサンプリングし、波形と同じ長さに正規化
+    let total_len = final_tables.get(0).map_or(0, |t| t.len());
+    let resampled_gain = if total_len > 0 && !amp_curve.is_empty() {
+        // RMSカーブを波形長に線形リサンプリング
+        let mut resampled = vec![0.0; total_len];
+        let amp_curve_len = amp_curve.len() as f32;
+        for i in 0..total_len {
+            let index_f = i as f32 / total_len as f32 * amp_curve_len;
+            let idx0 = index_f.floor() as usize;
+            let idx1 = (idx0 + 1).min(amp_curve.len().saturating_sub(1));
+            let frac = index_f - idx0 as f32;
+            resampled[i] = amp_curve[idx0] * (1.0 - frac) + amp_curve[idx1] * frac;
+        }
+        resampled
+    } else {
+        vec![1.0; total_len]
+    };
+
+    // 5.5.3. Core/Loop/Releaseのインデックスを計算
+    let core_end_ratio = core_end_ratio.clamp(0.0, 1.0);
+    let release_start_ratio = release_start_ratio.clamp(0.0, 1.0);
+    
+    let core_end_idx = (total_len as f32 * core_end_ratio).round() as usize;
+    let release_start_idx = (total_len as f32 * release_start_ratio).round() as usize;
+    
+    let safe_core_end_idx = core_end_idx.min(release_start_idx);
+    let safe_release_start_idx = release_start_idx.max(core_end_idx);
+
+    // 5.5.4. 波形とゲインカーブを分割
+    let main_table = final_tables.get(0)
+        .ok_or_else(|| "Final table is empty. Cannot split sections.".to_string())?;
+
+    let core_wave = main_table[0..safe_core_end_idx.min(total_len)].to_vec();
+    let loop_wave = main_table[safe_core_end_idx.min(total_len)..safe_release_start_idx.min(total_len)].to_vec();
+    let release_wave = main_table[safe_release_start_idx.min(total_len)..].to_vec();
+
+    let mut core_gain = resampled_gain[0..safe_core_end_idx.min(total_len)].to_vec();
+    let loop_gain = resampled_gain[safe_core_end_idx.min(total_len)..safe_release_start_idx.min(total_len)].to_vec();
+    let release_gain = resampled_gain[safe_release_start_idx.min(total_len)..].to_vec();
+
+    // ★ 5.5.5. 「必ずゼロから始まる」条件を強制 (Coreゲインカーブの最初の10サンプルを滑らかにゼロから立ち上げる)
+    if !core_gain.is_empty() {
+        let fade_len = core_gain.len().min(10);
+        for i in 0..fade_len {
+            let t = i as f32 / fade_len as f32;
+            core_gain[i] *= t; 
+            if i == 0 { core_gain[i] = 0.0; } // 念のため最初のサンプルはゼロ保証
+        }
+    }
     
     // 6. 品質検査
     let quality_metrics = quality::inspect_quality(
@@ -68,6 +129,12 @@ pub fn analyze_audio(
         f0_curve,
         confidence,
         tables: final_tables,
+        core_wave,
+        loop_wave,
+        release_wave,
+        core_gain,
+        loop_gain,
+        release_gain,
         quality: quality_metrics,
     })
 }

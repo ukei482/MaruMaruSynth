@@ -14,6 +14,13 @@ pub struct AnalysisResult {
     pub f0_curve: Vec<f32>,
     pub confidence: Vec<f32>,
     pub tables: Vec<Vec<f32>>,
+    pub core_wave: Vec<f32>,
+    pub loop_wave: Vec<f32>,
+    pub release_wave: Vec<f32>,
+    // ★ 修正点: ゲインカーブを追加
+    pub core_gain: Vec<f32>,    // Coreセクションの振幅プロファイル
+    pub loop_gain: Vec<f32>,    // Loopセクションの振幅プロファイル
+    pub release_gain: Vec<f32>, // Releaseセクションの振幅プロファイル
     pub quality: QualityMetrics,
 }
 
